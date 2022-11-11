@@ -3,7 +3,6 @@ import { MongoClient, ObjectId } from "mongodb";
 import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
-import bcrypt from "bcrypt";
 
 const userSchema = joi.object({
   name: joi.string().required().min(3).max(100),
@@ -26,6 +25,7 @@ try {
 
 const db = mongoClient.db("authDb");
 const userCollection = db.collection("users");
+
 
 
 app.listen(4000, () => {
