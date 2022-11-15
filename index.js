@@ -73,6 +73,18 @@ app.post("/sign-in", async (req, res) => {
       return res.sendStatus(401);
     }
 
+    // Verificar se o user já possui uma sessão aberta:
+    const userSession = await db
+      .collection("sessions")
+      .findOne({ userId: userExists._id });
+
+    if (userSession) {
+      return res
+        .status(401)
+        .send({ message: "Você já está logado, sai para logar novamente" });
+    }
+
+    // Se não tiver sessão aberta, abra uma nova.
     await db.collection("sessions").insertOne({
       token,
       userId: userExists._id,
@@ -102,7 +114,7 @@ app.get("/posts", async (req, res) => {
 
   try {
     const session = await db.collection("sessions").findOne({ token });
-    
+
     const user = await userCollection.findOne({ _id: session?.userId });
     if (!user) {
       return res.sendStatus(401);
