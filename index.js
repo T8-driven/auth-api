@@ -4,6 +4,7 @@ import cors from "cors";
 import dotenv from "dotenv";
 import joi from "joi";
 import bcrypt from "bcrypt";
+import { v4 as uuidV4 } from "uuid";
 
 const userSchema = joi.object({
   name: joi.string().required().min(3).max(100),
@@ -57,9 +58,11 @@ app.post("/sign-up", async (req, res) => {
 app.post("/sign-in", async (req, res) => {
   const { email, password } = req.body;
 
+  const token = uuidV4();
+
   try {
     const userExists = await userCollection.findOne({ email });
-    
+
     if (!userExists) {
       return res.sendStatus(401);
     }
@@ -70,7 +73,44 @@ app.post("/sign-in", async (req, res) => {
       return res.sendStatus(401);
     }
 
-    res.send({ message: `Olá ${userExists.name}, seja bem vindo(a)!` });
+    await db.collection("sessions").insertOne({
+      token,
+      userId: userExists._id,
+    });
+
+    res.send({ token });
+  } catch (err) {
+    console.log(err);
+    res.sendStatus(500);
+  }
+});
+
+app.get("/posts", async (req, res) => {
+  const posts = [
+    { title: "Bom dia", date: "14/11/2022" },
+    { title: "Boa tarde", date: "14/11/2022" },
+    { title: "Boa noite", date: "14/11/2022" },
+  ];
+
+  const { authorization } = req.headers; // Bearer Token
+
+  const token = authorization?.replace("Bearer ", "");
+
+  if (!token) {
+    return res.sendStatus(401);
+  }
+
+  try {
+    const session = await db.collection("sessions").findOne({ token });
+    
+    const user = await userCollection.findOne({ _id: session?.userId });
+    if (!user) {
+      return res.sendStatus(401);
+    }
+
+    delete user.password;
+
+    res.send({ posts, user });
   } catch (err) {
     console.log(err);
     res.sendStatus(500);
